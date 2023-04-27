@@ -4,10 +4,12 @@
 // Feel free to delete this line.
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
-use bevy::{prelude::*, render::camera::ScalingMode, tasks::IoTaskPool};
+use bevy::window::PrimaryWindow;
+use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_ggrs::*;
-use bevy_matchbox::matchbox_socket::{PeerId, SingleChannel, WebRtcSocket};
+use bevy_matchbox::matchbox_socket::{PeerId, SingleChannel};
 use bevy_matchbox::MatchboxSocket;
+use bytemuck::{Pod, Zeroable};
 
 fn main() {
     let mut app = App::new();
@@ -109,10 +111,35 @@ struct GgrsConfig;
 
 impl ggrs::Config for GgrsConfig {
     // 4-directions + fire fits easily in a single byte
-    type Input = u8;
+    type Input = GameInput;
     type State = u8;
     // Matchbox' WebRtcSocket addresses are called `PeerId`s
     type Address = PeerId;
+}
+
+#[repr(C)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Pod,
+    Zeroable,
+    Component,
+    Debug,
+    Default,
+    // Serialize,
+    // Deserialize,
+    Reflect,
+)]
+pub struct GameInput {
+    pub mouse: Vec2,
+    pub has_mouse: u8,
+    pub keys: u8,
+
+    // To avoid transmute size errors like this:
+    // > error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+    // Set the appropriate amount of padding bytes here, according to the error.
+    _padding: [u8; 6],
 }
 
 const INPUT_UP: u8 = 1 << 0;
@@ -158,23 +185,40 @@ fn spawn_players(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
     ));
 }
 
-fn input(_: In<ggrs::PlayerHandle>, keys: Res<Input<KeyCode>>) -> u8 {
-    let mut input = 0u8;
+fn input(
+    _: In<ggrs::PlayerHandle>,
+    keys: Res<Input<KeyCode>>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<(&Camera, &GlobalTransform)>,
+) -> GameInput {
+    let mut input = GameInput { ..default() };
+
+    let (camera, camera_transform) = camera.single();
+    if let Some(pos) = window
+        .single()
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        input.mouse = pos;
+        input.has_mouse = 1;
+        info!("Mouse @ {}", pos);
+    }
 
     if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
-        input |= INPUT_UP;
+        input.keys |= INPUT_UP;
     }
     if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
-        input |= INPUT_DOWN;
+        input.keys |= INPUT_DOWN;
     }
     if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
-        input |= INPUT_LEFT
+        input.keys |= INPUT_LEFT
     }
     if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
-        input |= INPUT_RIGHT;
+        input.keys |= INPUT_RIGHT;
     }
     if keys.any_pressed([KeyCode::Space, KeyCode::Return]) {
-        input |= INPUT_FIRE;
+        input.keys |= INPUT_FIRE;
     }
 
     input
@@ -189,25 +233,29 @@ fn move_players(
 
         let mut direction = Vec2::ZERO;
 
-        if input & INPUT_UP != 0 {
+        if input.keys & INPUT_UP != 0 {
             direction.y += 1.;
         }
-        if input & INPUT_DOWN != 0 {
+        if input.keys & INPUT_DOWN != 0 {
             direction.y -= 1.;
         }
-        if input & INPUT_RIGHT != 0 {
+        if input.keys & INPUT_RIGHT != 0 {
             direction.x += 1.;
         }
-        if input & INPUT_LEFT != 0 {
+        if input.keys & INPUT_LEFT != 0 {
             direction.x -= 1.;
         }
-        if direction == Vec2::ZERO {
-            continue;
-        }
+        // if direction == Vec2::ZERO {
+        //     continue;
+        // }
 
         let move_speed = 0.13;
         let move_delta = (direction * move_speed).extend(0.);
 
-        transform.translation += move_delta;
+        // transform.translation += move_delta;
+        if input.has_mouse == 1 {
+            transform.translation.x = input.mouse.x;
+            transform.translation.y = input.mouse.y;
+        }
     }
 }
