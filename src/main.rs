@@ -28,8 +28,8 @@ fn main() {
         ..default()
     }))
     .insert_resource(ClearColor(Color::rgb(0.53, 0.53, 0.53)))
-    .add_startup_systems((setup, spawn_player, start_matchbox_socket))
-    .add_systems((move_player.in_schedule(GGRSSchedule), wait_for_players))
+    .add_startup_systems((setup, spawn_players, start_matchbox_socket))
+    .add_systems((move_players.in_schedule(GGRSSchedule), wait_for_players))
     .run();
 }
 
@@ -79,7 +79,6 @@ fn wait_for_players(mut commands: Commands, mut socket: ResMut<MatchboxSocket<Si
         return; // wait for more players
     }
 
-    info!("All peers have joined, going in-game");
 
     // create a GGRS P2P session
     let mut session_builder = ggrs::SessionBuilder::<GgrsConfig>::new()
@@ -94,6 +93,8 @@ fn wait_for_players(mut commands: Commands, mut socket: ResMut<MatchboxSocket<Si
 
     // move the channel out of the socket (required because GGRS takes ownership of it)
     if let Ok(channel) = socket.take_channel(0) {
+        info!("All peers have joined, going in-game");
+
         // start the GGRS session
         let ggrs_session = session_builder
             .start_p2p_session(channel)
@@ -122,16 +123,34 @@ const INPUT_RIGHT: u8 = 1 << 3;
 const INPUT_FIRE: u8 = 1 << 4;
 
 #[derive(Component)]
-struct Player;
+struct Player {
+    handle: usize
+}
 
-fn spawn_player(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
+fn spawn_players(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
+    // Player 1
     commands.spawn((
-        Player,
-        rip.next(), // <-- NEW
+        Player { handle: 0 },
+        rip.next(),
         SpriteBundle {
             transform: Transform::from_translation(Vec3::new(-2., 0., 0.)),
             sprite: Sprite {
                 color: Color::rgb(0., 0.47, 1.),
+                custom_size: Some(Vec2::new(1., 1.)),
+                ..default()
+            },
+            ..default()
+        },
+    ));
+
+    // Player 2
+    commands.spawn((
+        Player { handle: 1 },
+        rip.next(),
+        SpriteBundle {
+            transform: Transform::from_translation(Vec3::new(2., 0., 0.)),
+            sprite: Sprite {
+                color: Color::rgb(0., 0.4, 0.),
                 custom_size: Some(Vec2::new(1., 1.)),
                 ..default()
             },
@@ -162,34 +181,34 @@ fn input(_: In<ggrs::PlayerHandle>, keys: Res<Input<KeyCode>>) -> u8 {
     input
 }
 
-fn move_player(
+fn move_players(
     inputs: Res<PlayerInputs<GgrsConfig>>,
-    mut player_query: Query<&mut Transform, With<Player>>,
+    mut player_query: Query<(&mut Transform, &Player)>,
 ) {
-    let mut direction = Vec2::ZERO;
+    for (mut transform, player) in player_query.iter_mut() {
+        let (input, _) = inputs[player.handle];
 
-    let (input, _) = inputs[0];
+        let mut direction = Vec2::ZERO;
 
-    if input & INPUT_UP != 0 {
-        direction.y += 1.;
-    }
-    if input & INPUT_DOWN != 0 {
-        direction.y -= 1.;
-    }
-    if input & INPUT_RIGHT != 0 {
-        direction.x += 1.;
-    }
-    if input & INPUT_LEFT != 0 {
-        direction.x -= 1.;
-    }
-    if direction == Vec2::ZERO {
-        return;
-    }
+        if input & INPUT_UP != 0 {
+            direction.y += 1.;
+        }
+        if input & INPUT_DOWN != 0 {
+            direction.y -= 1.;
+        }
+        if input & INPUT_RIGHT != 0 {
+            direction.x += 1.;
+        }
+        if input & INPUT_LEFT != 0 {
+            direction.x -= 1.;
+        }
+        if direction == Vec2::ZERO {
+            continue;
+        }
 
-    let move_speed = 0.13;
-    let move_delta = (direction * move_speed).extend(0.);
+        let move_speed = 0.13;
+        let move_delta = (direction * move_speed).extend(0.);
 
-    for mut transform in player_query.iter_mut() {
         transform.translation += move_delta;
     }
 }
