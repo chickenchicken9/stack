@@ -79,7 +79,6 @@ fn wait_for_players(mut commands: Commands, mut socket: ResMut<MatchboxSocket<Si
         return; // wait for more players
     }
 
-
     // create a GGRS P2P session
     let mut session_builder = ggrs::SessionBuilder::<GgrsConfig>::new()
         .with_num_players(num_players)
@@ -124,7 +123,7 @@ const INPUT_FIRE: u8 = 1 << 4;
 
 #[derive(Component)]
 struct Player {
-    handle: usize
+    handle: usize,
 }
 
 fn spawn_players(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
