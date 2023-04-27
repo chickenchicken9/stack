@@ -18,8 +18,24 @@ cargo run
 Run for web (install [Trunk](https://trunkrs.dev/#getting-started) first):
 
 ```sh
-trunk serve
+trunk serve --watch . web/index.html
 ```
+
+### Matchbox server
+
+Install:
+
+```sh
+cargo install matchbox_server
+```
+
+Run server:
+
+```sh
+matchbox_server
+```
+
+Then open two instances of the game (any combination of native / web!).
 
 ## CI
 

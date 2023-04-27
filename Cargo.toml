@@ -6,3 +6,5 @@ license = "MIT"
 
 [dependencies]
 bevy = "0.10"
+bevy_ggrs = { version = "0.12.0", features = ["wasm-bindgen"] }
+bevy_matchbox = { version = "0.6.0", features = ["ggrs"] }
