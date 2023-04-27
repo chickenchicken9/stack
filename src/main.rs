@@ -18,16 +18,14 @@ fn main() {
             }),
             ..default()
         }))
-        .add_startup_system(setup)
+        .insert_resource(ClearColor(Color::rgb(0.53, 0.53, 0.53)))
+        .add_startup_systems((setup, spawn_player))
+        .add_system(move_player)
         .run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle::default());
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("icon.png"),
-        ..Default::default()
-    });
     commands.spawn((
         // Create a TextBundle that has a Text with a single section.
         TextBundle::from_section(
@@ -51,4 +49,40 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }),
     ));
+}
+
+#[derive(Component)]
+struct Player;
+
+fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((Player, SpriteBundle {
+        texture: asset_server.load("icon.png"),
+        ..default()
+    }));
+}
+
+fn move_player(keys: Res<Input<KeyCode>>, mut player_query: Query<&mut Transform, With<Player>>) {
+    let mut direction = Vec2::ZERO;
+    if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
+        direction.y += 10.;
+    }
+    if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
+        direction.y -= 10.;
+    }
+    if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        direction.x += 10.;
+    }
+    if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        direction.x -= 10.;
+    }
+    if direction == Vec2::ZERO {
+        return;
+    }
+
+    let move_speed = 0.13;
+    let move_delta = (direction * move_speed).extend(0.);
+
+    for mut transform in player_query.iter_mut() {
+        transform.translation += move_delta;
+    }
 }
