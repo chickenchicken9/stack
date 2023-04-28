@@ -4,8 +4,8 @@
 // Feel free to delete this line.
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_ggrs::*;
 use bevy_matchbox::matchbox_socket::{PeerId, SingleChannel};
 use bevy_matchbox::MatchboxSocket;
@@ -36,9 +36,7 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut camera_bundle = Camera2dBundle::default();
-    camera_bundle.projection.scaling_mode = ScalingMode::FixedVertical(10.);
-    commands.spawn(camera_bundle);
+    commands.spawn(Camera2dBundle::default());
 
     commands.spawn((
         // Create a TextBundle that has a Text with a single section.
@@ -66,7 +64,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn start_matchbox_socket(mut commands: Commands) {
-    let room_url = "ws://chickenchicken-matchbox.fly.dev/extreme_bevy?next=2";
+    let room_url = "wss://chickenchicken-matchbox.fly.dev/extreme_bevy?next=2";
     info!("connecting to matchbox server: {:?}", room_url);
     commands.insert_resource(MatchboxSocket::new_ggrs(room_url));
 }
@@ -159,10 +157,10 @@ fn spawn_players(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
         Player { handle: 0 },
         rip.next(),
         SpriteBundle {
-            transform: Transform::from_translation(Vec3::new(-2., 0., 0.)),
+            transform: Transform::from_translation(Vec3::new(-100., 0., 0.)),
             sprite: Sprite {
-                color: Color::rgb(0., 0.47, 1.),
-                custom_size: Some(Vec2::new(1., 1.)),
+                color: Color::BISQUE,
+                custom_size: Some(Vec2::new(100., 100.)),
                 ..default()
             },
             ..default()
@@ -174,10 +172,10 @@ fn spawn_players(mut commands: Commands, mut rip: ResMut<RollbackIdProvider>) {
         Player { handle: 1 },
         rip.next(),
         SpriteBundle {
-            transform: Transform::from_translation(Vec3::new(2., 0., 0.)),
+            transform: Transform::from_translation(Vec3::new(100., 0., 0.)),
             sprite: Sprite {
-                color: Color::rgb(0., 0.4, 0.),
-                custom_size: Some(Vec2::new(1., 1.)),
+                color: Color::BLUE,
+                custom_size: Some(Vec2::new(100., 100.)),
                 ..default()
             },
             ..default()
@@ -202,7 +200,7 @@ fn input(
     {
         input.mouse = pos;
         input.has_mouse = 1;
-        info!("Mouse @ {}", pos);
+        // info!("Mouse @ {}", pos);
     }
 
     if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
@@ -250,7 +248,7 @@ fn move_players(
         // }
 
         let move_speed = 0.13;
-        let move_delta = (direction * move_speed).extend(0.);
+        let _move_delta = (direction * move_speed).extend(0.);
 
         // transform.translation += move_delta;
         if input.has_mouse == 1 {
